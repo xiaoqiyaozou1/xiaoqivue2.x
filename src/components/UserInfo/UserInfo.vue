@@ -14,7 +14,7 @@
         <el-col :span="8">
           <el-input
             placeholder="请输入内容"
-            v-model="queryInfo.query"
+            v-model="queryInfo.userName"
             clearable
             @clear="getUserList"
           >
@@ -45,14 +45,14 @@
               type="primary"
               icon="el-icon-edit"
               size="mini"
-              @click="showEditDialog(scope.row.userId)"
+              @click="showEditDialog(scope.row.id)"
             ></el-button>
             <!-- 删除按钮 -->
             <el-button
               type="danger"
               icon="el-icon-delete"
               size="mini"
-              @click="removeUserById(scope.row.userId)"
+              @click="removeUserById(scope.row.id)"
             ></el-button>
             <!-- 分配角色按钮 -->
             <el-tooltip
@@ -342,7 +342,6 @@ export default {
       if (data.status !== 200) {
         return this.$message.error("获取用户列表失败！");
       }
-      debugger;
       this.userlist = data.response.data;
       this.total = data.response.total;
     },
@@ -381,11 +380,8 @@ export default {
     // 展示编辑用户的对话框
     async showEditDialog(id) {
       const { data } = await getSysUserById(id);
-      debugger;
-      if (data.success !== true) {
+      if (data.success !== true)
         return this.$message.error("查询用户信息失败！");
-      }
-
       this.editForm = data.response;
       this.editDialogVisible = true;
     },
@@ -394,26 +390,15 @@ export default {
       this.$refs.editFormRef.resetFields();
     },
     // 修改用户信息并提交
-    editUserInfo() {
-      this.$refs.editFormRef.validate(async (valid) => {
-        if (!valid) return;
-        // 发起修改用户信息的数据请求
-        const { data: res } = await this.$http.put(
-          "Manager/UpdateUserInfo",
-          this.editForm
-        );
-
-        if (res.status !== 200) {
-          return this.$message.error("更新用户信息失败！");
-        }
-
+    async editUserInfo() {
+      const { data } = await updateSysUser(this.editForm);
+      if ((data.success = true)) {
+        this.$message.success("更新用户信息成功！");
         // 关闭对话框
         this.editDialogVisible = false;
         // 刷新数据列表
         this.getUserList();
-        // 提示修改成功
-        this.$message.success("更新用户信息成功！");
-      });
+      } else this.$message.error("更新用户信息失败！");
     },
     // 根据Id删除对应的用户信息
     async removeUserById(id) {
@@ -427,24 +412,16 @@ export default {
           type: "warning",
         }
       ).catch((err) => err);
-
       // 如果用户确认删除，则返回值为字符串 confirm
       // 如果用户取消了删除，则返回值为字符串 cancel
       // console.log(confirmResult)
       if (confirmResult !== "confirm") {
         return this.$message.info("已取消删除");
       }
-
-      const { data: res } = await this.$http.delete("Manager/DeleteUserInfo", {
-        params: {
-          userId: id,
-        },
-      });
-
-      if (res.status !== 200) {
+      const { data } = await deleteSysUser(id);
+      if (data.success !== true) {
         return this.$message.error("删除用户失败！");
       }
-
       this.$message.success("删除用户成功！");
       this.getUserList();
     },
