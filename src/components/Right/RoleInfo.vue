@@ -46,7 +46,7 @@
               size="mini"
               type="warning"
               icon="el-icon-setting"
-              @click="showSetRightDialog(scope.row)"
+              @click="showSetRightDialog(scope.row.id)"
               >分配权限</el-button
             >
           </template>
@@ -76,7 +76,7 @@
         :data="rightslist"
         :props="treeProps"
         show-checkbox
-        node-key="menuInfoId"
+        node-key="Id"
         default-expand-all
         :default-checked-keys="defKeys"
         ref="treeRef"
@@ -148,6 +148,11 @@ import {
   getSysRoleById,
   addSysRole,
   deleteSysRole,
+  getSysResoureces,
+  getTreeUrls,
+  addRoleResourece,
+  getRoleResourceByRoleId,
+  updateRoleResources,
 } from "../../api/index";
 import { getGuid } from "../../utilites";
 export default {
@@ -205,13 +210,16 @@ export default {
       roleRights: {},
       // 树形控件的属性绑定对象
       treeProps: {
-        label: "menuName",
-        children: "children",
+        label: "Name",
+        children: "Children",
       },
       // 默认选中的节点Id值数组
       defKeys: [],
       // 当前即将分配权限的角色id
       roleId: "",
+
+      isUpdateRight: false,
+      UpdateRight: {},
     };
   },
   created() {
@@ -343,33 +351,16 @@ export default {
       role.children = res.data;
     },
     // 展示分配权限的对话框
-    async showSetRightDialog(role) {
-      this.roleId = role.roleId;
+    async showSetRightDialog(roleId) {
+      this.roleId = roleId;
+      await this.getRights(roleId);
+      await this.getMenuData(); //获取权限数据
 
-      //得到所有的权限树
-      const { data: res } = await this.$http.get("Manager/GetMenuTree");
-
-      if (res.status !== 200) {
-        return this.$message.error("获取权限数据失败！");
+      if (this.rightslist.length > 0) {
+        this.setRightDialogVisible = true;
       }
-
-      // 把获取到的权限数据保存到 data 中
-      this.rightslist = res.data;
-
-      var { data: menuInfos } = await this.$http.get(
-        "Manager/GetRoleMenusByRoleId",
-        {
-          params: {
-            roleId: this.roleId,
-          },
-        }
-      );
-
-      this.getLeafKeys(menuInfos.data);
-      // this.test();
-      this.setRightDialogVisible = true;
     },
-
+    //获取选中得信息
     getLeafKeys(node) {
       this.defKeys = [];
       if (node !== null) {
@@ -383,8 +374,6 @@ export default {
     // 监听分配权限对话框的关闭事件
     setRightDialogClosed() {
       this.defKeys.splice(0, this.defKeys.length);
-      //this.defKeys = [];
-      console.log(this.defKeys);
     },
     // 点击为角色分配权限
     async allotRights() {
@@ -394,25 +383,52 @@ export default {
       ];
 
       const idStr = keys.join(",");
+      if (this.isUpdateRight) {
+        this.UpdateRight.resourcesId = idStr;
+        debugger;
+        const { data } = await updateRoleResources(this.UpdateRight);
 
-      console.log(idStr);
-      var roleId = this.roleId;
-      var roleMenu = {
-        roleId: roleId,
-        menuInfoId: idStr,
-      };
+        if (data.success != true) {
+          return this.$message.error("分配权限失败！");
+        }
+      } else {
+        const roleResource = {
+          id: getGuid(),
+          roleId: this.roleId,
+          resourcesId: idStr,
+        };
+        const { data } = await addRoleResourece(roleResource);
 
-      const { data: res } = await this.$http.post(
-        "Manager/SetRoleMenu",
-        roleMenu
-      );
-      console.log(res);
-      if (res.status !== 200) {
-        return this.$message.error("分配权限失败！");
+        if (data.success != true) {
+          return this.$message.error("分配权限失败！");
+        }
       }
 
       this.$message.success("分配权限成功！");
       this.setRightDialogVisible = false;
+    },
+
+    //获取选中得权限
+    async getRights(roleId) {
+      const { data } = await getRoleResourceByRoleId(roleId);
+      const rights = data.response;
+
+      if (rights != null) {
+        this.isUpdateRight = true;
+        this.UpdateRight = rights;
+      }
+      rights.resourcesId.split(",").forEach((item) => {
+        if (item != "0") this.defKeys.push(item);
+      });
+      console.log(this.defKeys);
+    },
+    //获取所有得权限信息
+    async getMenuData() {
+      const { data } = await getTreeUrls();
+      this.rightslist = JSON.parse(data.response);
+      if (data.success !== true) {
+        return this.$message.error("获取权限数据失败！");
+      }
     },
   },
 };

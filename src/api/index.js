@@ -163,6 +163,11 @@ export const getSysRolesPage = (params) => {
 export const getSysResoureces = () => {
     return axios.get('/api/SysResources/GetSysResourcess');
 }
+/**获取树状资源信息 */
+export const getTreeUrls = () => {
+    return axios.get('/api/SysResources/GetTreeResources')
+}
+
 
 /**根据id 获取信息 */
 export const getSysResoureceById = (id) => {
@@ -200,3 +205,22 @@ export const getSysResourcesPage = (params) => {
     })
 }
 
+
+/**添加角色资源信息 */
+export const addRoleResourece = (params) => {
+    return axios.post('/api/SysRoleResources/AddSysRoleResources', params)
+}
+
+/**根据角色id 获取角色权限 */
+export const getRoleResourceByRoleId = (roleId) => {
+    return axios.get('/api/SysRoleResources/GetRoleResourceByRoleId', {
+        params: {
+            roleId: roleId
+        }
+    })
+}
+
+/**更新权限信息 */
+export const updateRoleResources = (params) => {
+    return axios.put('/api/SysRoleResources/UpdateSysRoleResources', params)
+}
