@@ -381,13 +381,11 @@ export default {
         ...this.$refs.treeRef.getCheckedKeys(),
         ...this.$refs.treeRef.getHalfCheckedKeys(),
       ];
-
       const idStr = keys.join(",");
       if (this.isUpdateRight) {
         this.UpdateRight.resourcesId = idStr;
         debugger;
         const { data } = await updateRoleResources(this.UpdateRight);
-
         if (data.success != true) {
           return this.$message.error("分配权限失败！");
         }
@@ -398,29 +396,48 @@ export default {
           resourcesId: idStr,
         };
         const { data } = await addRoleResourece(roleResource);
-
         if (data.success != true) {
           return this.$message.error("分配权限失败！");
         }
       }
-
       this.$message.success("分配权限成功！");
       this.setRightDialogVisible = false;
     },
 
     //获取选中得权限
     async getRights(roleId) {
-      const { data } = await getRoleResourceByRoleId(roleId);
-      const rights = data.response;
-
+      //获取选中的数据
+      const res = await getRoleResourceByRoleId(roleId);
+      const rights = res.data.response;
       if (rights != null) {
         this.isUpdateRight = true;
         this.UpdateRight = rights;
       }
-      rights.resourcesId.split(",").forEach((item) => {
-        if (item != "0") this.defKeys.push(item);
+
+      //获取所有的数据
+      const res2 = await getSysResoureces();
+      const allMeunInfos = res2.data.response;
+
+      //用选中的数据 过滤出其完整信息 这个操作可以放到后端
+      let newArr = [];
+      allMeunInfos.forEach((item) => {
+        rights.resourcesId.split(",").forEach((o) => {
+          if (o == item.id) {
+            newArr.push(item);
+          }
+        });
       });
-      console.log(this.defKeys);
+
+      //判断选中的节点是否有子节点 如果有则舍弃 再判断是否为父节点 解决父节点半选显示的问题
+      newArr.forEach((item) => {
+        const childArr = allMeunInfos.filter((o) => {
+          if (o.parentId == item.id) return o;
+        });
+
+        if (item.parentId == "0" && childArr.length <= 0)
+          this.defKeys.push(item.id);
+        else if (item.parentId != "0") this.defKeys.push(item.id);
+      });
     },
     //获取所有得权限信息
     async getMenuData() {
